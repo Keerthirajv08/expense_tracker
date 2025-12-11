@@ -116,10 +116,20 @@ def summary_of_all_exp():
 
 
 def month_summary():
+    expenses = load_expenses()
+
     pass
 
+
 def show_help():
-    pass
+    print("Usage:")
+    print("python expense_tracker.py add \"description\" \"amount\"")
+    print("python expense_tracker.py update \"expense_id\" \"new_description\" \"new_amount\"")
+    print("python expense_tracker.py delete \"expense_id\"")
+    print("python expense_tracker.py list")
+    print("python expense_tracker.py summary")
+    print("python expense_tracker.py month")
+    print("python expense_tracker.py help")
 
 def main():
     if len(sys.argv) < 2:
@@ -176,7 +186,9 @@ def main():
         return False
     
 
-
-
 if __name__ == "__main__":
     main()
+
+
+
+
