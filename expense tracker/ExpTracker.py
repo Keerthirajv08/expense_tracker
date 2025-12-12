@@ -25,7 +25,6 @@ class ExpenseTracker:
         self.budgets = self.load_budgets()
         self.next_id = max([expense.id for expense in self.expenses], default=0) + 1
 
-    
     def load_expenses(self) -> List[Expense]:
         if os.path.exists(self.expense_file):
             try:
@@ -53,6 +52,9 @@ class ExpenseTracker:
         with open(self.budget_file, 'w') as f:
             json.dump(self.budgets, f, indent=2)
     
+
+
+
     def add_expense(self, description: str, amount:float, category: str = "other"):
         """Add a new expense"""
         if amount <= 0:
@@ -79,7 +81,7 @@ class ExpenseTracker:
     
     def update_expense(self, expense_id:int, **kwargs):
         for expense in self.expenses:
-            if expense_id == expense.id:
+            if expense.id == expense_id:
                 for key, value in kwargs.items():
                     if hasattr(expense, key):
                         setattr(expense, key, value)
@@ -89,7 +91,7 @@ class ExpenseTracker:
 
         print(f"Error: Expense with ID {expense_id} not found.")
 
-    def delete_expenses(self, expense_id:int):
+    def delete_expenses(self, expense_id: int):
         for i, expense in enumerate(self.expenses):
             if expense.id == expense_id:
                 self.expenses.pop(i)
@@ -100,12 +102,12 @@ class ExpenseTracker:
         print(f"Error: Expense with ID {expense_id} not found.")
 
     def view_all_expenses(self, filter_category: Optional[str] = None):
-        if not self.expenses:
+        if not self.expenses:      
             print("No expenses found.")
             return
         
-        filtered_expenses = self.expenses
-        if filter_category:
+        filtered_expenses = self.expenses       # If no filter is provided, show all expenses
+        if filter_category:     # Filter expenses by category
             filtered_expenses = [e for e in self.expenses if e.category.lower() == filter_category.lower()]
             if not filtered_expenses:
                 print(f"No expenses found for category: {filter_category}")
@@ -115,8 +117,204 @@ class ExpenseTracker:
         print(f"{'ID':<5} {'Date':<12} {'Category':<15} {'Description':<25} {'Amount':<10}")
         print("-"*60)
 
-    
+        total = 0
+        for expense in filtered_expenses:
+            print(f"{expense.id:<5} {expense.date:<12} {expense.category:<15} {expense.description[:23]:<25} {expense.amount:<10.2f}")
+            total += expense.amount
+
+        print("-"*60)
+        print(f"{'Total:':<57} Rs.{total:<10.2f}")
+        print("=" * 60)
+
+    def view_summary(self, month: Optional[str] = None):
+        if not self.expenses:
+            print("No expenses found.")
+            return
+        
+        filtered_expenses = self.expenses
+        if month:
+            if len(month) == 7 and month[4] == '-':
+                filtered_expenses = [e for e in self.expenses if e.date.startswith(month)]
+            else:
+                print("Error: Month format should be YYYY-MM")
+                return
+        
+        if not filtered_expenses:
+            print(f"No expenses found for {month if month else 'any month'}.")
+            return
+        
+        #Calculate totals by category
+        category_totals = defaultdict(float)
+        monthly_total = 0
+
+        for expense in filtered_expenses:
+            category_totals[expense.category] += expense.amount
+            monthly_total += expense.amount
+        
+        month_str = f"for {month}" if month else "Overall"
+        print(f"\n{'='*40}")
+        print(f"EXPENSE SUMMARY {month_str}")
+        print(f"{'='*40}")
+
+        for category, total in sorted(category_totals.items()):
+            percentage = (total / monthly_total * 100) if monthly_total > 0 else 0
+            print(f"{category:<20} ${total:>10.2f} ({percentage:>5.1f}%)")
+
+        print(f"{'-'*40}")
+        print(f"{'TOTAL':<20} ${monthly_total:>10.2f}")
+
+        if month:
+            self.check_budget(month, monthly_total)
 
     def check_budget(self):
         pass
 
+    def set_budget(self, month: str, amount: float):
+        pass
+
+    def export_to_csv(self, filename: str = "expenses_exp.csv"):
+        pass
+
+    def get_categories(self) -> List[str]:
+        pass
+
+
+def display_menu():
+    """display the main menu."""
+    print("\n" + "="*50)
+    print("Expense Tracker")
+    print("="*50)
+    print("1. Add Expense")
+    print("2. Update Expense")
+    print("3. Delete Expense")
+    print("4. View All Expenses")
+    print("5. View Summary")
+    print("6. View Summary by month")
+    print("7. Set Monthly Budget")
+    print("8. Export to CSV")
+    print("9. View Categories")
+    print("0. Exit")
+    print("="*50)
+
+def main():
+    tracker = ExpenseTracker()
+
+    while True:
+        display_menu()
+
+        try:
+            choice = input("\Enter your choice (0-9): ").strip()
+
+            if choice == '0':
+                print("Goodbye!")
+                break
+
+            elif choice == '1':
+                print("\n==== Add New Expense ====")
+                description = input("Enter description: ").strip()
+
+                try:
+                    amount = float(input("Enter the amount: ").strip())
+                except ValueError:
+                    print("Error: Please enter a valid number for amount.")
+                    continue
+
+                category = input("Enter the Category (default: Other): ").strip()
+                if not category:
+                    category = "Other"
+
+                
+                #category  = input("Enter the category: ").strip()
+                tracker.add_expense(description, amount, category)
+
+
+            elif choice == '2':
+                print("\n---Update Expenses----")
+                try:
+                    expense_id = int(input("Enter the expense id to update: ").strip())
+                except ValueError:
+                    print("Error: Please enter a valid ID number.")
+                    continue
+
+                print("Leave field blank to keep current value.")
+                description = input("Enter new description: ").strip()
+                amount_str = input("Enter new amount: ").strip()
+                category = input("Enter new category: ").strip()
+
+                updates = {}
+                if description:
+                    updates['description'] = description
+
+                if amount_str:
+                    try:
+                        updates['amount'] = float(amount_str)
+                    except ValueError:
+                        print("Error: Please enter a valid number for amount.")
+                        continue
+
+                if category:
+                    updates['category'] = category
+
+                if updates:
+                    tracker.update_expense(expense_id, **updates)
+                else:
+                    print("No changes made.")
+            
+            elif choice == "3":
+                print("\n---Delete Expenses----")
+                try:
+                    expense_id = int(input("Enter the expense id to delete: ").strip())
+                except ValueError:
+                    print("Error: Please enter a valid expense id number.")
+                    continue
+
+                confirm = input(f"Are you sure you want to delete expense ID {expense_id}? (y/n): ")
+
+                if confirm.lower() == 'y':
+                    tracker.delete_expenses(expense_id)
+
+            elif choice == '4':
+                print("\n===View All Expenses====")
+                filter_by = input("Filter by category (leave blank for all): ").strip()
+
+                if filter_by:
+                    tracker.view_all_expenses(filter_category=filter_by)
+                else:
+                    tracker.view_all_expenses()
+            
+            elif choice == '5':
+                print("\n===View Summary===")
+                tracker.view_summary()
+
+            elif choice == '6':
+                print("\n===View Summary by Month===")
+                month = input("Enter the month (YYYY-MM): ").strip()
+                tracker.view_summary(month=month)
+
+            elif choice == '7':
+                print("\n===Set Monthly Budget===")
+                month = input("Enter the month (YYYY-MM): ").strip()
+                amount = float(input("Enter the budget amount: ").strip())
+                tracker.set_budget(month, amount)
+            
+            elif choice == '8':
+                print("\n===Export to CSV===")
+                filename = input("Enter the filename (default: expenses_exp.csv): ").strip()
+                if not filename:
+                    filename = "expenses_exp.csv"
+                tracker.export_to_csv(filename)
+                
+            elif choice == "9":
+                print("\n===View Categories===")
+                tracker.get_categories()
+
+        except KeyboardInterrupt:
+            print("\n\Goodbye!")
+            break
+
+        except Exception as e:
+            print(f"An Error occurred: {e}")
+            
+
+if __name__ == "__main__":
+    main()
