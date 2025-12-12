@@ -54,7 +54,6 @@ class ExpenseTracker:
     
 
 
-
     def add_expense(self, description: str, amount:float, category: str = "other"):
         """Add a new expense"""
         if amount <= 0:
@@ -158,25 +157,68 @@ class ExpenseTracker:
 
         for category, total in sorted(category_totals.items()):
             percentage = (total / monthly_total * 100) if monthly_total > 0 else 0
-            print(f"{category:<20} ${total:>10.2f} ({percentage:>5.1f}%)")
+            print(f"{category:<20} Rs.{total:>10.2f} ({percentage:>5.1f}%)")
 
         print(f"{'-'*40}")
-        print(f"{'TOTAL':<20} ${monthly_total:>10.2f}")
+        print(f"{'TOTAL':<20} Rs.{monthly_total:>10.2f}")
 
+        #Check budget if viewing monthly summary
         if month:
             self.check_budget(month, monthly_total)
 
-    def check_budget(self):
-        pass
+    def check_budget(self, month: str, total_spent: Optional[float] = None):
+        """Check if budget is exceeded for a given month."""
+        if month in self.budgets:
+            budget = self.budgets[month]
+            if total_spent is None:
+                total_spent = sum(expense.amount for expense in self.expenses if expense.date.startswith(month))
+            
+            if total_spent > budget:
+                print(f"\n⚠️ Budget for {month} exceeded! Total spent: Rs.{total_spent:.2f}, Budget: Rs.{budget:.2f}")
+                print(f"   Over Budget by: Rs. {total_spent - budget:.2f}")
+            elif total_spent > budget * 0.9:
+                print(f"\n⚠️ Budget for {month} approaching! Total spent: Rs.{total_spent:.2f}, Budget: Rs.{budget:.2f}")
+                print(f"   Remaining Budget by: Rs. {total_spent - budget:.2f}")
+
 
     def set_budget(self, month: str, amount: float):
-        pass
+        """Set budget for a  specific month."""
+        if amount < 0:
+            print("Error: Budget amount cannot be negative.")
+            return
+
+        self.budgets[month] = amount
+        self.save_budgets()
+        print(f"Budget for {month} set to Rs.{amount:.2f}")
+        
 
     def export_to_csv(self, filename: str = "expenses_exp.csv"):
-        pass
+        if not self.expenses:
+            print("No expenses found.")
+            return
+
+        try:
+            with open(filename, 'w', newline='') as csvfile:
+                fieldnames = ['ID', 'Date', 'Category', 'Description', 'Amount']
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+                writer.writeheader()
+                for expense in self.expenses:
+                    writer.writerow({
+                        'ID': expense.id,
+                        'Date': expense.date,
+                        'Category': expense.category,
+                        'Description': expense.description,
+                        'Amount': expense.amount
+                    })
+
+            print(f"Expenses exported to {filename} successfully.")
+        except Exception as e:
+            print(f"Error exporting to csv: {e}")
+
 
     def get_categories(self) -> List[str]:
-        pass
+        return sorted(set(expense.category for expense in self.expenses))
 
 
 def display_menu():
@@ -226,7 +268,6 @@ def main():
                 
                 #category  = input("Enter the category: ").strip()
                 tracker.add_expense(description, amount, category)
-
 
             elif choice == '2':
                 print("\n---Update Expenses----")
@@ -294,8 +335,11 @@ def main():
             elif choice == '7':
                 print("\n===Set Monthly Budget===")
                 month = input("Enter the month (YYYY-MM): ").strip()
-                amount = float(input("Enter the budget amount: ").strip())
-                tracker.set_budget(month, amount)
+                try:
+                    amount = float(input("Enter the budget amount: ").strip())
+                    tracker.set_budget(month, amount)
+                except ValueError:
+                    print("Error: Please enter a valid number for amount.")
             
             elif choice == '8':
                 print("\n===Export to CSV===")
@@ -306,12 +350,18 @@ def main():
                 
             elif choice == "9":
                 print("\n===View Categories===")
-                tracker.get_categories()
+                categories = tracker.get_categories()
+                if categories:
+                    print("Categories:", ", ".join(categories))
+                else:
+                    print("No categories found.")
+
+            else:
+                print("Invalid choice. Please try again.")
 
         except KeyboardInterrupt:
             print("\n\Goodbye!")
             break
-
         except Exception as e:
             print(f"An Error occurred: {e}")
             
